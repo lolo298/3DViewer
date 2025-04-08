@@ -20,6 +20,7 @@ class TextureViewer(pyglet.window.Window):
         self.new_overlay()
         glEnable(GL_BLEND)
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+        self.dispatch_event('on_draw')
 
     def on_draw(self):
         self.clear()

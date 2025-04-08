@@ -34,6 +34,9 @@ total_vertices = len(mesh.vertices)
 print(total_faces)
 print(total_vertices)
 
+texture = Image.open(texture_file)
+mesh.visual = TextureVisuals(image=texture, uv=mesh.visual.uv)
+
 
 camera = Camera(name="main_camera", fov=(90, 90), resolution=(800, 800))
 scene = Scene(geometry=mesh, camera=camera)
@@ -70,7 +73,6 @@ def update_texture(dt = None, file: str = "") -> None:
     print("Texture updated", dt, file)
 
 
-update_texture(file=texture_file)
 
 
 class TextureChangeHandler(FileSystemEventHandler):
@@ -81,10 +83,10 @@ class TextureChangeHandler(FileSystemEventHandler):
         pyglet.clock.schedule_once(update_texture, 0, texture_file)
 
 
-event_handler = TextureChangeHandler()
-observer = Observer()
-observer.schedule(event_handler, path=".", recursive=False)
-observer.start()
+# event_handler = TextureChangeHandler()
+# observer = Observer()
+# observer.schedule(event_handler, path=".", recursive=False)
+# observer.start()
 
 
 

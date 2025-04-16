@@ -3,7 +3,6 @@ pillow==11.1.0
 pyglet==1.5.30
 scipy==1.15.2
 trimesh==4.6.6
-watchdog==6.0.0
 
 # from trimesh[easy]
 anyio==4.9.0

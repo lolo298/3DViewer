@@ -1,42 +1,38 @@
-from time import sleep
-from typing import Tuple
-
 import numpy as np
 import trimesh.path
 from PIL import Image
 import pyglet
-from numpy._typing import NDArray
-from trimesh import load_mesh, Scene, load_path, Trimesh
+from trimesh import load_mesh, Scene
 from trimesh.scene import Camera
-from trimesh.visual import TextureVisuals, ColorVisuals
+from trimesh.visual import TextureVisuals
 from trimesh.transformations import translation_matrix
-from trimesh.path.exchange.misc import edges_to_path
-from trimesh.path.path import Path
 from TextureViewer import TextureViewer
 from trimesh.viewer.windowed import SceneViewer
-from watchdog.events import FileModifiedEvent, FileSystemEventHandler, FileSystemEvent
-from watchdog.observers import Observer
-from ModelParts import ModelParts, find_segment, get_segment_indices, get_segment_color
+from ModelParts import find_segment, get_segment_indices, get_segment_color
+import os
 
-texture_file = "drawed_body.png"
-# texture_file = "body.png"
+if os.path.isfile("drawed_body.png"):
+    texture_file = "drawed_body.png"
+else:
+    texture_file = "body.png"
 texture_img = Image.open(texture_file)
-texture_data = np.array(texture_img)
 
-image_viewer = TextureViewer(texture_file)
+debug_red_texture = Image.new("RGBA", (512, 512), (255, 0, 0, 255))
+debug_green_texture = Image.new("RGBA", (512, 512), (0, 255, 0, 255))
+
+
+image_viewer = TextureViewer(texture_img)
 # noinspection PyTypeChecker
 mesh = load_mesh('./models/trimesh_uv.obj', process=False)
 segmented_mesh = load_mesh('./models/trimesh_uv_labeled.obj', process=False)
 
+mesh.visual = TextureVisuals(image=texture_img, uv=mesh.visual.uv)
+
 total_faces = len(mesh.faces)
 total_vertices = len(mesh.vertices)
 
-print(total_faces)
-print(total_vertices)
-
-texture = Image.open(texture_file)
-mesh.visual = TextureVisuals(image=texture, uv=mesh.visual.uv)
-
+print(f"Total faces: {total_faces}")
+print(f"Total vertices: {total_vertices}")
 
 camera = Camera(name="main_camera", fov=(90, 90), resolution=(800, 800))
 scene = Scene(geometry=mesh, camera=camera)
@@ -47,50 +43,29 @@ scene.graph.update(
     matrix=translation_matrix([0, -1, -2])
 )
 
+
 viewer = SceneViewer(scene=scene, start_loop=False)
-# noinspection PyTypeChecker
-# viewer = scene.show(start_loop=False, callback=lambda s: None)
 
-# # On clicking the window, raycast to get the click location in 3d world, and print the uv coordinates
-# # of the corresponding face
-# while viewer.is_alive:
-#     click = viewer.pick()
-#     if click is not None:
-#         location, face_id = click
-#         face = mesh.faces[face_id]
-#         uv = mesh.visual.uv[face]
-#         print(uv)
-#
-
-# TODO
-def update_texture(dt = None, file: str = "") -> None:
+@image_viewer.dispatcher.event
+def on_texture_update(texture: Image) -> None:
     """
     Update the texture of the mesh with the new texture file.
     """
-    texture = Image.open(file)
-    mesh.visual = TextureVisuals(image=texture, uv=mesh.visual.uv)
+    mesh.visual.material.image = texture
+    # Update the mesh with the new texture
+    name = mesh.metadata.get('name')
+    viewer.add_geometry(name, mesh)
+    viewer.switch_to()
     viewer.dispatch_event("on_draw")
-    print("Texture updated", dt, file)
+    image_viewer.switch_to()
 
-
-
-
-class TextureChangeHandler(FileSystemEventHandler):
-    def on_any_event(self, event: FileSystemEvent) -> None:
-        print("file event")
-    def on_modified(self, event):
-        sleep(1)
-        pyglet.clock.schedule_once(update_texture, 0, texture_file)
-
-
-# event_handler = TextureChangeHandler()
-# observer = Observer()
-# observer.schedule(event_handler, path=".", recursive=False)
-# observer.start()
-
-
+@viewer.event
+def on_key_press(symbol, modifiers):
+    if symbol == pyglet.window.key.C:
+        on_texture_update(debug_green_texture)
 
 mouse_dragged = False
+
 
 @viewer.event
 def on_mouse_drag(x, y, dx, dy, buttons, modifiers):
@@ -125,8 +100,6 @@ def on_mouse_release(x, y, button, modifiers):
 
     # Find the face that the ray intersects
     location, index_ray, index_tri = mesh.ray.intersects_location(origin.reshape(1, -1), drctn.reshape(1, -1))
-    print(location, index_ray, index_tri)
-
 
     if location.size > 0 :
         # Get the face index

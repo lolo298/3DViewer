@@ -1,20 +1,29 @@
 import pyglet
-from pyglet.image import Texture, AbstractImage
 from PIL import Image, ImageDraw
 from pyglet.gl import glEnable, glBlendFunc, GL_BLEND, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA
+
+class TextureViewerEvent(pyglet.event.EventDispatcher):
+    def __init__(self):
+        super().__init__()
+        self.register_event_type("on_texture_update")
+    def on_texture_update(self, texture:Image) -> None:
+        """
+        Update the texture of the mesh with the new texture file.
+        """
+        pass
+
 
 class TextureViewer(pyglet.window.Window):
     texture:Image = None
     canvas:Image = None
     is_drawing = False
     overlay:Image = None
+    dispatcher = TextureViewerEvent()
 
-    def __init__(self, texture:str):
+    def __init__(self, texture:Image):
         super().__init__(800, 800, "Texture Viewer", resizable=True)
-        self.texture = Image.open(texture, formats=('PNG',)).convert('RGBA')
-        print("Image mode:", self.texture.mode)
-        print("Image size:", self.texture.size)
-        print("Byte length:", len(self.texture.tobytes()))
+        # self.texture = Image.open(texture, formats=('PNG',)).convert('RGBA')
+        self.texture = texture
         self.set_size(self.texture.width, self.texture.height)
         self.new_canvas()
         self.new_overlay()
@@ -30,20 +39,16 @@ class TextureViewer(pyglet.window.Window):
 
 
     def on_mouse_press(self, x, y, button, modifiers):
-        print("Mouse pressed")
         if button == pyglet.window.mouse.LEFT:
             self.is_drawing = True
-            print(f"Mouse pressed at: ({x}, {y})")
     def on_mouse_release(self, x, y, button, modifiers):
         if button == pyglet.window.mouse.LEFT:
             self.is_drawing = False
             self.canvas_interface = None
-            print(f"Mouse released at: ({x}, {y})")
             self.save_texture()
 
     def on_mouse_drag(self, x, y, dx, dy, buttons, modifiers):
         if buttons == pyglet.window.mouse.LEFT:
-            print(f"Mouse moved to: ({x}, {y})")
             # You can add your drawing logic here
             canvas_interface = ImageDraw.Draw(self.canvas)
             canvas_interface.line([(x-1, y), (x+1, y)], fill=(255, 0, 0, 255), width=3)
@@ -52,6 +57,7 @@ class TextureViewer(pyglet.window.Window):
         self.texture.paste(flipped_texture, (0,0), flipped_texture)
         self.texture.save("drawed_body.png")
         self.new_canvas()
+        self.dispatcher.dispatch_event("on_texture_update", self.texture)
         print("Texture saved as drawed_body.png")
     def show_uvs(self, uvs, faces):
         # Convert the UV coordinates to pixel coordinates
@@ -61,10 +67,9 @@ class TextureViewer(pyglet.window.Window):
         # Draw the UV coordinates on the texture
         for i, (x, y) in enumerate(pixel_coords):
             overlay_interface.line([(x-1, y), (x+1, y)], fill=(255, 255, 0, 255), width=2)
-            print(f"Drawing UV at: ({x}, {y})")
             # Draw lines between uvs
 
-        # Now iterate over each face and draw the corresponding UV edges
+        # Iterate over each face and draw the corresponding UV edges
         for face in faces:
             # Each face is defined by 3 vertices, so we get the UVs for each of those vertices
             uv1 = pixel_coords[face[0]]  # First vertex
